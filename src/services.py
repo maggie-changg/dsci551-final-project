@@ -1,6 +1,6 @@
 """
 services.py
-Business logic using your csv_parser and DataFrame:
+Business logic using csv_parser.py and dataframe.py:
 - load rows
 - compute UI options (genres, subgenres, tempo buckets, month/year lists)
 - apply filters via DataFrame.filter

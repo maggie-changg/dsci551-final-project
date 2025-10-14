@@ -57,7 +57,7 @@ class DataFrame:
             if col not in self.columns:
                 raise ValueError(f"Column '{col}' not found in dataset.")
         projected = [{col: row[col] for col in columns} for row in self.rows]
-        print(f"✅ Projected columns: {columns}")
+        print(f"Projected columns: {columns}")
         return DataFrame(projected)
 
     # -----------------------------------------------------------
@@ -96,7 +96,7 @@ class DataFrame:
 
             result.append(agg_result)
 
-        print(f"✅ Grouped by '{group_col}' with {len(result)} groups.")
+        print(f"Grouped by '{group_col}' with {len(result)} groups.")
         return DataFrame(result)
 
     # -----------------------------------------------------------
@@ -109,7 +109,7 @@ class DataFrame:
         if col not in self.columns:
             raise ValueError(f"Column '{col}' not found.")
         sorted_rows = sorted(self.rows, key=lambda r: (r[col] is None, r[col]), reverse=reverse)
-        print(f"✅ Sorted by '{col}' ({'DESC' if reverse else 'ASC'})")
+        print(f"Sorted by '{col}' ({'DESC' if reverse else 'ASC'})")
         return DataFrame(sorted_rows)
 
     # -----------------------------------------------------------

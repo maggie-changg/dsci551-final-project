@@ -31,7 +31,6 @@ stats = {
     "duplicates_removed": 0,
 }
 
-
 # ---------------------------------------------------------------
 # FUNCTION: _coerce
 # PURPOSE: Converts each field (string) from the CSV into its proper Python type.
