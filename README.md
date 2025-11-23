@@ -159,7 +159,7 @@ Both tests print previews so reviewers can visually confirm results, but they al
 
 ## 9. Credits & Data Source
 
-- Spotify song features come from the [R for Data Science — TidyTuesday Spotify Songs dataset](https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-01-21) curated via the `spotifyr` package.
-- Artist metadata is an auxiliary Kaggle export (place it at `data/artist_meta.csv` if available).
+- Spotify CSV File Data Source: (https://www.kaggle.com/datasets/joebeachcapital/30000-spotify-songs) 
+- Spotify CSV File for JOIN Data Source: (https://www.kaggle.com/datasets/khushikhushikhushi/best-selling-music-artists?resource=download) 
 
-Happy listening and happy grading! 🎧
+Happy listening and happy filtering! 
