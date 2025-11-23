@@ -4,6 +4,7 @@ Purpose:
 - Run CSV cleaning pipeline
 - Print sample rows and cleaning summary
 - Verify that cleaned file is written successfully
+- Verify that cleaned file is readable by our parser and has same schema
 """
 
 import os
@@ -63,6 +64,7 @@ write_clean_csv(rows, clean_path)
 # Print cleaning stats
 # ---------------------------------------------------------------
 print_stats(rows)
+
 # ---------------------------------------------------------------
 # Confirm cleaned file creation
 # ---------------------------------------------------------------
@@ -70,3 +72,28 @@ if os.path.exists(clean_path):
     print(f"Cleaned file successfully saved at: {clean_path}")
 else:
     print(f"[WARNING] Cleaned file not found. Check write_clean_csv() function.")
+
+# ---------------------------------------------------------------
+# Verify that cleaned CSV is readable and has same schema
+# ---------------------------------------------------------------
+if os.path.exists(clean_path):
+    print("\nRe-reading cleaned CSV to verify schema...")
+    cleaned_rows = read_csv(clean_path)
+
+    if not isinstance(cleaned_rows, list):
+        raise AssertionError("Cleaned file should load as a list of dicts.")
+
+    if not cleaned_rows:
+        raise AssertionError("Cleaned file appears to be empty.")
+
+    original_keys = set(rows[0].keys())
+    cleaned_keys = set(cleaned_rows[0].keys())
+
+    if original_keys != cleaned_keys:
+        raise AssertionError(
+            f"Schema mismatch between original and cleaned CSV.\n"
+            f"Original keys: {sorted(original_keys)}\n"
+            f"Cleaned keys:  {sorted(cleaned_keys)}"
+        )
+
+    print("Cleaned CSV is readable and has the same schema as original data.")

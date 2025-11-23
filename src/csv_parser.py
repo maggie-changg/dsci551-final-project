@@ -156,13 +156,31 @@ def write_clean_csv(rows: List[Dict[str, Any]], output_path: str):
         return
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
-        writer.writeheader()
+
+    # Use the keys from the first row as header
+    fieldnames = list(rows[0].keys())
+
+    with open(output_path, "w", encoding="utf-8", newline="") as f:
+        # write header
+        f.write(",".join(fieldnames) + "\n")
+
+        # write rows
         for row in rows:
-            clean_row = {k: ("" if v is None else v) for k, v in row.items()}
-            writer.writerow(clean_row)
+            values = []
+            for col in fieldnames:
+                val = row.get(col)
+                if val is None:
+                    text = ""
+                else:
+                    text = str(val)
+                # escape commas and quotes
+                if ',' in text or '"' in text:
+                    text = '"' + text.replace('"', '""') + '"'
+                values.append(text)
+            f.write(",".join(values) + "\n")
+
     print(f"Cleaned CSV written to: {output_path}")
+
 
 
 # ---------------------------------------------------------------

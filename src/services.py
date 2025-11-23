@@ -6,11 +6,12 @@ Business logic using csv_parser.py and dataframe.py:
 - apply filters via DataFrame.filter
 - project via DataFrame.project
 - group_by via DataFrame.group_by
+- join via DataFrame.join
 - sort_by via DataFrame.sort_by
 """
 
 import os
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 
 from csv_parser import read_csv
 from dataframe import DataFrame
@@ -25,27 +26,28 @@ from filters import (
 
 PROJECT_COLS = ["track_name", "track_artist", "track_album_name", "track_album_release_date"]
 
+# Path to your artist metadata CSV
+ARTIST_META_PATH = "data/artist_meta.csv"
+
+
 def load_rows(path: str) -> List[Dict[str, Any]]:
     if not os.path.exists(path):
         raise FileNotFoundError(f"Missing file: {path}")
     return read_csv(path)
 
+
 def build_options(rows: List[Dict[str, Any]], genre_choice: Optional[str]):
     """Compute dropdown options for the UI."""
-    # Popularity buckets 0-10 ... 90-100
     pop_options = ["ANY"] + [f"{i}-{i+10}" for i in range(0, 100, 10)]
-
-    # Float buckets 0.0-0.1 ... 0.9-1.0
     float_buckets = ["ANY"] + [f"{i/10:.1f}-{(i+1)/10:.1f}" for i in range(0, 10)]
 
-    # Genres & subgenres
     genres = ["ANY"] + unique_non_null(rows, "playlist_genre")
-    if (genre_choice and genre_choice != "ANY"):
+
+    if genre_choice and genre_choice != "ANY":
         sub_opts = ["ANY"] + subgenres_for_genre(rows, genre_choice)
     else:
         sub_opts = ["ANY"] + unique_non_null(rows, "playlist_subgenre")
 
-    # Tempo buckets (20 BPM steps) based on dataset min/max
     tempos = [r.get("tempo") for r in rows if isinstance(r.get("tempo"), (int, float))]
     if tempos:
         tmin, tmax = int(min(tempos)), int(max(tempos))
@@ -57,17 +59,19 @@ def build_options(rows: List[Dict[str, Any]], genre_choice: Optional[str]):
     else:
         tempo_opts = ["ANY"]
 
-    # Month labels
     month_labels = ["ANY",
         "Jan (1)","Feb (2)","Mar (3)","Apr (4)","May (5)","Jun (6)",
         "Jul (7)","Aug (8)","Sep (9)","Oct (10)","Nov (11)","Dec (12)"
     ]
 
-    # Year options from data
-    years = sorted({int(r["track_album_release_date"][:4]) for r in rows
-                    if isinstance(r.get("track_album_release_date"), str)
-                    and len(r["track_album_release_date"]) >= 4
-                    and r["track_album_release_date"][:4].isdigit()})
+    years = sorted({
+        int(r["track_album_release_date"][:4])
+        for r in rows
+        if isinstance(r.get("track_album_release_date"), str)
+        and len(r["track_album_release_date"]) >= 4
+        and r["track_album_release_date"][:4].isdigit()
+    })
+
     year_opts = ["ANY"] + [str(y) for y in years]
 
     return {
@@ -80,6 +84,7 @@ def build_options(rows: List[Dict[str, Any]], genre_choice: Optional[str]):
         "year_options": year_opts,
     }
 
+
 def apply_pipeline(
     rows: List[Dict[str, Any]],
     pop_bucket: Optional[str],
@@ -91,31 +96,33 @@ def apply_pipeline(
     live_bucket: Optional[str],
     month_label: Optional[str],
     year_label: Optional[str],
-    sort_choice: Optional[str],  # 'popularity' | 'danceability' | None
+    sort_choice: Optional[str],
 ):
     """
     Full pipeline using your DataFrame:
       - filter (WHERE)
       - project (SELECT)
       - group_by artist (GROUP BY ... AVG)
+      - join with artist metadata (JOIN)
       - sort_by chosen aggregate (ORDER BY ASC)
-    Returns (df_raw, df_filtered, df_projected, df_grouped, df_sorted)
+    Returns (df_raw, df_filtered, df_projected, df_grouped, df_sorted, df_joined)
     """
+
     df_raw = DataFrame(rows)
 
-    # Resolve UI selections to typed filters (None == ANY)
-    pop_range   = parse_range_or_any(pop_bucket)
-    dance_range = parse_range_or_any(dance_bucket)
-    energy_range= parse_range_or_any(energy_bucket)
-    tempo_range = parse_range_or_any(tempo_bucket)
-    live_range  = parse_range_or_any(live_bucket)
-    month_val   = month_to_int_or_any(month_label)
-    year_val    = parse_year_or_any(year_label)
+    # --- Parse UI filters ---
+    pop_range    = parse_range_or_any(pop_bucket)
+    dance_range  = parse_range_or_any(dance_bucket)
+    energy_range = parse_range_or_any(energy_bucket)
+    tempo_range  = parse_range_or_any(tempo_bucket)
+    live_range   = parse_range_or_any(live_bucket)
+    month_val    = month_to_int_or_any(month_label)
+    year_val     = parse_year_or_any(year_label)
 
-    genre_val    = None if (not genre_choice or genre_choice == "ANY") else genre_choice
-    subgenre_val = None if (not subgenre_choice or subgenre_choice == "ANY") else subgenre_choice
+    genre_val    = None if not genre_choice or genre_choice == "ANY" else genre_choice
+    subgenre_val = None if not subgenre_choice or subgenre_choice == "ANY" else subgenre_choice
 
-    # WHERE
+    # --- WHERE ---
     predicate = build_predicate(
         pop_range, genre_val, subgenre_val,
         dance_range, energy_range, tempo_range, live_range,
@@ -123,14 +130,45 @@ def apply_pipeline(
     )
     df_filtered = df_raw.filter(predicate)
 
-    # SELECT
+    # --- SELECT ---
     df_projected = df_filtered.project(PROJECT_COLS)
 
-    # GROUP BY (avg popularity & avg danceability per artist)
+    # --- GROUP BY ---
     agg_map = {"track_popularity": "avg", "danceability": "avg"}
     df_grouped = df_filtered.group_by("track_artist", agg_map)
 
-    # ORDER BY (ascending) on selected aggregate
+    # --- JOIN (FIXED + SAFE) ---
+    if os.path.exists(ARTIST_META_PATH):
+        raw_artist_rows = read_csv(ARTIST_META_PATH)
+
+        # Normalize Kaggle columns -> project schema
+        normalized_rows = []
+        for r in raw_artist_rows:
+            # Safely detect column names
+            name = r.get("Artist name") or r.get("artist_name") or r.get("track_artist")
+            country = r.get("Country") or r.get("country")
+
+            if not name:
+                continue
+
+            normalized_rows.append(
+                {
+                    "track_artist": name,
+                    "artist_country": country or "UNKNOWN"
+                }
+            )
+
+        if normalized_rows:
+            df_artist = DataFrame(normalized_rows)
+            df_joined = df_grouped.join(df_artist, left_on="track_artist", right_on="track_artist")
+        else:
+            print("[WARNING] No usable rows in artist_meta.csv. Skipping JOIN.")
+            df_joined = df_grouped
+    else:
+        print(f"[WARNING] artist_meta.csv not found at {ARTIST_META_PATH}. Skipping JOIN.")
+        df_joined = df_grouped
+
+    # --- ORDER BY ---
     sort_key = None
     if sort_choice == "popularity":
         sort_key = "track_popularity"
@@ -139,4 +177,4 @@ def apply_pipeline(
 
     df_sorted = df_grouped.sort_by(sort_key, reverse=False) if sort_key else df_grouped
 
-    return df_raw, df_filtered, df_projected, df_grouped, df_sorted
+    return df_raw, df_filtered, df_projected, df_grouped, df_sorted, df_joined

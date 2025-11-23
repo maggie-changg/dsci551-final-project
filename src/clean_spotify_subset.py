@@ -66,7 +66,7 @@ def clean_csv(input_path: str, output_path: str, keep_cols):
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"✅ Wrote subset CSV: {output_path}")
+    print(f"Wrote subset CSV: {output_path}")
     print(f"   Rows: {len(rows):,} | Columns kept: {len(cols_to_use)} ({cols_to_use})")
 
 

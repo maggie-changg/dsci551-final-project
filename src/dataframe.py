@@ -7,9 +7,10 @@ Implements core SQL-like operations:
 - SORT and COUNT
 """
 
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any, Callable, Optional
 from collections import defaultdict
 import statistics
+
 
 
 # ---------------------------------------------------------------
@@ -43,7 +44,7 @@ class DataFrame:
     # -----------------------------------------------------------
     def filter(self, condition: Callable[[Dict[str, Any]], bool]):
         filtered_rows = [row for row in self.rows if condition(row)]
-        print(f"✅ Filtered rows: {len(filtered_rows)} out of {len(self.rows)}")
+        print(f"Filtered rows: {len(filtered_rows)} out of {len(self.rows)}")
         return DataFrame(filtered_rows)
 
     # -----------------------------------------------------------
@@ -118,3 +119,71 @@ class DataFrame:
     # -----------------------------------------------------------
     def count(self):
         return len(self.rows)
+
+
+    # -----------------------------------------------------------
+    # METHOD: join
+    # PURPOSE: Inner join with another DataFrame on key columns.
+    #
+    # Example:
+    #   df_joined = df_left.join(df_right,
+    #                            left_on="track_artist",
+    #                            right_on="track_artist")
+    #
+    # This is an INNER JOIN:
+    #   - Only rows with matching key values on both sides appear
+    #     in the result.
+    # -----------------------------------------------------------
+    def join(
+        self,
+        other: "DataFrame",
+        left_on: str,
+        right_on: Optional[str] = None,
+        suffixes=("_left", "_right"),
+    ) -> "DataFrame":
+        if right_on is None:
+            right_on = left_on
+
+        if not self.rows or not other.rows:
+            return DataFrame([])
+
+        if left_on not in self.columns:
+            raise ValueError(f"Column '{left_on}' not found in left DataFrame.")
+        if right_on not in other.columns:
+            raise ValueError(f"Column '{right_on}' not found in right DataFrame.")
+
+        # Build lookup from right-hand key to list of rows
+        index: Dict[Any, List[Dict[str, Any]]] = {}
+        for r in other.rows:
+            key = r.get(right_on)
+            index.setdefault(key, []).append(r)
+
+        joined_rows: List[Dict[str, Any]] = []
+
+        for l in self.rows:
+            key = l.get(left_on)
+            matches = index.get(key, [])
+            for r in matches:
+                combined: Dict[str, Any] = {}
+
+                # copy left row
+                for col in self.columns:
+                    combined[col] = l.get(col)
+
+                # copy right row (avoid duplicate key col; handle collisions)
+                for col in other.columns:
+                    if col == right_on:
+                        # key already represented from left
+                        continue
+                    if col in combined:
+                        combined[col + suffixes[1]] = r.get(col)
+                    else:
+                        combined[col] = r.get(col)
+
+                joined_rows.append(combined)
+
+        print(
+            f"Joined {len(self.rows)} left rows with "
+            f"{len(other.rows)} right rows; result has {len(joined_rows)} rows."
+        )
+        return DataFrame(joined_rows)
