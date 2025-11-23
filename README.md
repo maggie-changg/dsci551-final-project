@@ -76,7 +76,7 @@ dsci551-final-project/
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt   # only if you have one; otherwise pip install streamlit
+pip install -r requirements.txt 
 ```
 
 Dependencies are minimal: standard library + `streamlit`. No pandas allowed.
