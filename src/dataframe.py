@@ -11,8 +11,6 @@ from typing import List, Dict, Any, Callable, Optional
 from collections import defaultdict
 import statistics
 
-
-
 # ---------------------------------------------------------------
 # CLASS: DataFrame
 # PURPOSE: Provides SQL-like operations on parsed CSV data
@@ -120,15 +118,9 @@ class DataFrame:
     def count(self):
         return len(self.rows)
 
-
     # -----------------------------------------------------------
     # METHOD: join
     # PURPOSE: Inner join with another DataFrame on key columns.
-    #
-    # Example:
-    #   df_joined = df_left.join(df_right,
-    #                            left_on="track_artist",
-    #                            right_on="track_artist")
     #
     # This is an INNER JOIN:
     #   - Only rows with matching key values on both sides appear

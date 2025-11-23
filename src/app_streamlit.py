@@ -186,9 +186,9 @@ else:
     st.info("No joined rows were produced (filters removed all matches or artist_meta.csv had no overlaps).")
 
 # # ------------------------------------------------
-# # 10) Operation trace (for your report)
+# # 10) Operation trace (for reference)
 # # ------------------------------------------------
-# st.header("7) Operation Trace (for your report)")
+# st.header("7) Operation Trace (for source code reference)")
 # st.markdown("""
 # - **Load & Parse** → `read_csv()` in `csv_parser.py`
 # - **Filter (WHERE)** → `DataFrame.filter()`

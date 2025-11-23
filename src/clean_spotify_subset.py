@@ -54,7 +54,7 @@ def clean_csv(input_path: str, output_path: str, keep_cols):
         available_cols = reader.fieldnames or []
         missing = [c for c in keep_cols if c not in available_cols]
         if missing:
-            print(f"⚠️ Warning: missing columns: {missing}")
+            print(f"Warning: missing columns: {missing}")
 
         cols_to_use = [c for c in keep_cols if c in available_cols]
         rows = [ {col: row.get(col, "") for col in cols_to_use} for row in reader ]
